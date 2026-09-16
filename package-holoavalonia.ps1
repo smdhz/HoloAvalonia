@@ -9,8 +9,8 @@ $ContentsDir = Join-Path $AppBundle 'Contents'
 $MacOSDir = Join-Path $ContentsDir 'MacOS'
 $ResourcesDir = Join-Path $ContentsDir 'Resources'
 $IconSource = Join-Path $ProjectDir 'Resources/fire.ico'
-$IconsetDir = Join-Path $PublishDir "$AppName.iconset"
 $IcnsFile = Join-Path $ResourcesDir "$AppName.icns"
+$IconWorkDir = Join-Path ([System.IO.Path]::GetTempPath()) "$AppName-icon-$([Guid]::NewGuid().ToString('N'))"
 $BundleId = 'com.monkeysoft.holoavalonia'
 $InfoPlist = Join-Path $ContentsDir 'Info.plist'
 
@@ -26,7 +26,8 @@ try {
     Require-Command 'dotnet'
     Require-Command 'rsync'
     Require-Command 'sips'
-    Require-Command 'iconutil'
+    Require-Command 'tiffutil'
+    Require-Command 'tiff2icns'
     Require-Command 'plutil'
 
     if (-not (Test-Path $ProjectFile)) {
@@ -48,22 +49,25 @@ try {
 
     New-Item -ItemType Directory -Force -Path $MacOSDir | Out-Null
     New-Item -ItemType Directory -Force -Path $ResourcesDir | Out-Null
-    New-Item -ItemType Directory -Force -Path $IconsetDir | Out-Null
 
-    Write-Host '==> Generating iconset'
-    & sips -z 16 16 $IconSource --out (Join-Path $IconsetDir 'icon_16x16.png') | Out-Null
-    & sips -z 32 32 $IconSource --out (Join-Path $IconsetDir 'icon_16x16@2x.png') | Out-Null
-    & sips -z 32 32 $IconSource --out (Join-Path $IconsetDir 'icon_32x32.png') | Out-Null
-    & sips -z 64 64 $IconSource --out (Join-Path $IconsetDir 'icon_32x32@2x.png') | Out-Null
-    & sips -z 128 128 $IconSource --out (Join-Path $IconsetDir 'icon_128x128.png') | Out-Null
-    & sips -z 256 256 $IconSource --out (Join-Path $IconsetDir 'icon_128x128@2x.png') | Out-Null
-    & sips -z 256 256 $IconSource --out (Join-Path $IconsetDir 'icon_256x256.png') | Out-Null
-    & sips -z 512 512 $IconSource --out (Join-Path $IconsetDir 'icon_256x256@2x.png') | Out-Null
-    & sips -z 512 512 $IconSource --out (Join-Path $IconsetDir 'icon_512x512.png') | Out-Null
-    & sips -z 1024 1024 $IconSource --out (Join-Path $IconsetDir 'icon_512x512@2x.png') | Out-Null
+    Write-Host '==> Generating app icon'
+    New-Item -ItemType Directory -Force -Path $IconWorkDir | Out-Null
 
-    & iconutil -c icns $IconsetDir -o $IcnsFile
-    if ($LASTEXITCODE -ne 0) { throw "iconutil failed with exit code $LASTEXITCODE" }
+    $IconTiffFiles = foreach ($Size in 16, 32, 48, 128, 256, 512, 1024) {
+        $TiffFile = Join-Path $IconWorkDir "icon-$Size.tiff"
+        & sips -s format tiff -z $Size $Size $IconSource --out $TiffFile | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "sips failed to generate ${Size}x${Size} icon with exit code $LASTEXITCODE"
+        }
+        $TiffFile
+    }
+
+    $MultiSizeTiff = Join-Path $IconWorkDir "$AppName.tiff"
+    & tiffutil -catnosizecheck @IconTiffFiles -out $MultiSizeTiff | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "tiffutil failed with exit code $LASTEXITCODE" }
+
+    & tiff2icns $MultiSizeTiff $IcnsFile
+    if ($LASTEXITCODE -ne 0) { throw "tiff2icns failed with exit code $LASTEXITCODE" }
 
     Write-Host '==> Writing Info.plist'
     @"
@@ -101,7 +105,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "plutil failed with exit code $LASTEXITCODE" }
 
     Write-Host '==> Copying published files into app bundle'
-    & rsync -a --delete --exclude "$AppName.app" --exclude "$AppName.iconset" "$PublishDir/" "$MacOSDir/"
+    & rsync -a --delete --exclude "$AppName.app" "$PublishDir/" "$MacOSDir/"
     if ($LASTEXITCODE -ne 0) { throw "rsync failed with exit code $LASTEXITCODE" }
 
     & chmod +x (Join-Path $MacOSDir $AppName)
@@ -122,7 +126,7 @@ try {
     Write-Host "  $FinalApp"
 }
 finally {
-    if (Test-Path $IconsetDir) {
-        Remove-Item $IconsetDir -Recurse -Force
+    if (Test-Path $IconWorkDir) {
+        Remove-Item $IconWorkDir -Recurse -Force
     }
 }
