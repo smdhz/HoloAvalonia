@@ -1,0 +1,34 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="HoloAvalonia.App"
+             RequestedThemeVariant="Default">
+
+    <Application.Styles>
+        <FluentTheme />
+    </Application.Styles>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="HoloAppBackgroundBrush">#F6FAFD</SolidColorBrush>
+                    <SolidColorBrush x:Key="HoloSurfaceBrush">#FFFFFFFF</SolidColorBrush>
+                    <SolidColorBrush x:Key="HoloSurfaceLowBrush">#EEF8FC</SolidColorBrush>
+                    <SolidColorBrush x:Key="HoloBorderBrush">#C8DCE7</SolidColorBrush>
+                    <SolidColorBrush x:Key="HoloAccentBrush">#1FA7C9</SolidColorBrush>
+                    <SolidColorBrush x:Key="HoloInfoOverlayBrush">#EEFFFFFF</SolidColorBrush>
+                    <SolidColorBrush x:Key="HoloSoonOverlayBrush">#EED9F7FF</SolidColorBrush>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="HoloAppBackgroundBrush">#111820</SolidColorBrush>
+                    <SolidColorBrush x:Key="HoloSurfaceBrush">#1A242E</SolidColorBrush>
+                    <SolidColorBrush x:Key="HoloSurfaceLowBrush">#151E27</SolidColorBrush>
+                    <SolidColorBrush x:Key="HoloBorderBrush">#31414E</SolidColorBrush>
+                    <SolidColorBrush x:Key="HoloAccentBrush">#65D9F2</SolidColorBrush>
+                    <SolidColorBrush x:Key="HoloInfoOverlayBrush">#E61A242E</SolidColorBrush>
+                    <SolidColorBrush x:Key="HoloSoonOverlayBrush">#E6263F4A</SolidColorBrush>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

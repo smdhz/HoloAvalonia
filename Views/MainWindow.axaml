@@ -1,0 +1,125 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:service="clr-namespace:HoloAvalonia.Services"
+        xmlns:model="clr-namespace:HoloAvalonia.Models"
+        xmlns:asyncImageLoader="clr-namespace:AsyncImageLoader;assembly=AsyncImageLoader.Avalonia"
+        x:Class="HoloAvalonia.Views.MainWindow"
+        x:DataType="service:HololiveService"
+        Container.Name="MainWindowContainer"
+        Container.Sizing="Width"
+        Title="HoloAvalonia"
+        Icon="avares://HoloAvalonia/Resources/fire.ico"
+        Width="970" Height="660"
+        Background="{DynamicResource HoloAppBackgroundBrush}">
+    <Window.Styles>
+        <Style Selector="Border.InfoOverlay">
+            <Setter Property="Background" Value="{DynamicResource HoloInfoOverlayBrush}" />
+        </Style>
+        <Style Selector="Border.InfoOverlay.WithinHour">
+            <Setter Property="Background" Value="{DynamicResource HoloSoonOverlayBrush}" />
+        </Style>
+        <Style Selector="Border.StreamCard">
+            <Setter Property="Width" Value="300" />
+            <Setter Property="Background" Value="{DynamicResource HoloSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource HoloBorderBrush}" />
+        </Style>
+        <Style Selector="Grid.StreamCardMedia">
+            <Setter Property="Height" Value="185" />
+            <Setter Property="Background" Value="{DynamicResource HoloSurfaceLowBrush}" />
+        </Style>
+        <ContainerQuery Name="MainWindowContainer"
+                        Query="min-width:1200">
+            <Style Selector="Border.StreamCard">
+                <Setter Property="Width" Value="360" />
+            </Style>
+            <Style Selector="Grid.StreamCardMedia">
+                <Setter Property="Height" Value="230" />
+            </Style>
+        </ContainerQuery>
+        <ContainerQuery Name="MainWindowContainer"
+                        Query="min-width:1440">
+            <Style Selector="Border.StreamCard">
+                <Setter Property="Width" Value="450" />
+            </Style>
+            <Style Selector="Grid.StreamCardMedia">
+                <Setter Property="Height" Value="300" />
+            </Style>
+        </ContainerQuery>
+    </Window.Styles>
+    <Grid Margin="12" RowDefinitions="*,Auto">
+        <ScrollViewer Margin="0,12,0,0"
+                      HorizontalScrollBarVisibility="Disabled"
+                      HorizontalContentAlignment="Center">
+            <ItemsControl ItemsSource="{Binding Items}"
+                          HorizontalAlignment="Center">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="model:HololiveScheduleModel">
+                        <Border Classes="StreamCard"
+                                Margin="6,0,6,12"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                ClipToBounds="True">
+                            <Border.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Copy ID"
+                                              Command="{Binding CopyIdCommand}" />
+                                    <MenuItem Header="Preview Thumbnail"
+                                              Command="{Binding PreviewImageCommand}" />
+                                    <MenuItem Header="Add to Calendar"
+                                              Command="{Binding AddToCalendarCommand}" />
+                                </ContextMenu>
+                            </Border.ContextMenu>
+                            <Grid Classes="StreamCardMedia">
+                                <HyperlinkButton NavigateUri="{Binding StreamUrl}"
+                                                 Background="Transparent"
+                                                 BorderThickness="0"
+                                                 Padding="0">
+                                    <Image asyncImageLoader:ImageLoader.Source="{Binding StreamImage}"
+                                           Stretch="UniformToFill" />
+                                </HyperlinkButton>
+                                <Border VerticalAlignment="Bottom"
+                                        Classes.InfoOverlay="True"
+                                        Classes.WithinHour="{Binding IsStartWithinOneHour}"
+                                        Padding="10,8">
+                                    <StackPanel Height="70" Spacing="4">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock FontFamily="Segoe UI Emoji, Segoe UI Symbol"
+                                                       Foreground="{DynamicResource HoloAccentBrush}"
+                                                       Text="{Binding MemberIcon}" />
+                                            <TextBlock Text="{Binding DisplayMemberName}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding StreamTitle}" TextWrapping="NoWrap" />
+                                        <TextBlock Text="{Binding LocalStartDt, StringFormat='{}{0:yyyy-MM-dd hh:mm tt}'}" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <Expander Grid.Row="1" HorizontalAlignment="Stretch"
+                  Margin="0,12,0,0"
+                  IsEnabled="{Binding IsReady}"
+                  Header="{Binding StatusText}">
+            <StackPanel Margin="8,6" Orientation="Horizontal" Spacing="12">
+                <CheckBox Content="Show Past" IsChecked="{Binding ShowPastItems, Mode=TwoWay}" />
+                <CheckBox Content="Hide Shorts" IsChecked="{Binding HideShortVideos, Mode=TwoWay}" />
+                <Button Content="Filter"
+                        Click="FilterButton_Click" />
+                <Button x:Name="ThemeToggleButton"
+                        Content="Theme"
+                        Click="ThemeToggleButton_Click" />
+            </StackPanel>
+        </Expander>
+    </Grid>
+</Window>

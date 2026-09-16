@@ -1,0 +1,62 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:views="clr-namespace:HoloAvalonia.Views"
+        xmlns:model="clr-namespace:HoloAvalonia.Models"
+        x:Class="HoloAvalonia.Views.MemberFilterWindow"
+        x:DataType="views:MemberFilterWindow"
+        mc:Ignorable="d"
+        Width="440"
+        Height="620"
+        MinWidth="380"
+        MinHeight="440"
+        Title="Filter Members"
+        Icon="avares://HoloAvalonia/Resources/fire.ico"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        Background="{DynamicResource HoloAppBackgroundBrush}">
+    <DockPanel Margin="12" LastChildFill="True">
+        <StackPanel DockPanel.Dock="Top" Spacing="8">
+            <TextBlock FontSize="18" FontWeight="Bold" Text="Filter Members" />
+            <TextBlock FontSize="12" Opacity="0.8" Text="Unchecked members will be hidden." />
+        </StackPanel>
+
+        <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Content="Cancel" Click="CancelButton_Click" />
+            <Button Content="Save" Click="SaveButton_Click" />
+        </StackPanel>
+
+        <Border Margin="0,12,0,0"
+                BorderBrush="{DynamicResource HoloBorderBrush}"
+                BorderThickness="1"
+                Background="{DynamicResource HoloSurfaceLowBrush}"
+                CornerRadius="8"
+                Padding="8">
+            <ScrollViewer>
+                <ItemsControl ItemsSource="{Binding Options}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" ItemWidth="180" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="model:MemberVisibilityOption">
+                            <CheckBox Margin="0,2,0,2"
+                                      Width="172"
+                                      IsChecked="{Binding IsVisible}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock FontFamily="Segoe UI Emoji, Segoe UI Symbol"
+                                               Foreground="{DynamicResource HoloAccentBrush}"
+                                               Text="{Binding MemberIcon}" />
+                                    <TextBlock Text="{Binding DisplayName}"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </CheckBox>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+    </DockPanel>
+</Window>
