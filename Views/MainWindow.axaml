@@ -10,7 +10,7 @@
         Container.Name="MainWindowContainer"
         Container.Sizing="Width"
         Title="HoloAvalonia"
-        Icon="avares://HoloAvalonia/Resources/fire.ico"
+        Icon="avares://HoloAvalonia/Resources/suisei.ico"
         Width="970" Height="660"
         Background="{DynamicResource HoloAppBackgroundBrush}">
     <Window.Styles>

@@ -12,7 +12,7 @@
         MinWidth="380"
         MinHeight="440"
         Title="Filter Members"
-        Icon="avares://HoloAvalonia/Resources/fire.ico"
+        Icon="avares://HoloAvalonia/Resources/suisei.ico"
         WindowStartupLocation="CenterOwner"
         CanResize="True"
         Background="{DynamicResource HoloAppBackgroundBrush}">

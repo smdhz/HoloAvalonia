@@ -5,7 +5,7 @@
         x:Class="HoloAvalonia.Views.PreviewWindow"
         mc:Ignorable="d"
         Title="Preview Thumbnail"
-        Icon="avares://HoloAvalonia/Resources/fire.ico"
+        Icon="avares://HoloAvalonia/Resources/suisei.ico"
         Width="960"
         Height="540"
         MinWidth="240"
