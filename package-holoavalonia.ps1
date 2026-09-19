@@ -3,7 +3,13 @@ $ErrorActionPreference = 'Stop'
 $AppName = 'HoloAvalonia'
 $ProjectDir = $PSScriptRoot
 $ProjectFile = Join-Path $ProjectDir 'HoloAvalonia.csproj'
-$PublishDir = Join-Path $ProjectDir 'bin/Release/net10.0/publish'
+$Architecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+$RuntimeIdentifier = switch ($Architecture) {
+    'Arm64' { 'osx-arm64' }
+    'X64' { 'osx-x64' }
+    default { throw "Unsupported macOS architecture: $Architecture" }
+}
+$PublishDir = Join-Path $ProjectDir "bin/Release/net10.0/$RuntimeIdentifier/publish"
 $AppBundle = Join-Path $PublishDir "$AppName.app"
 $ContentsDir = Join-Path $AppBundle 'Contents'
 $MacOSDir = Join-Path $ContentsDir 'MacOS'
@@ -29,6 +35,7 @@ try {
     Require-Command 'tiffutil'
     Require-Command 'tiff2icns'
     Require-Command 'plutil'
+    Require-Command 'codesign'
 
     if (-not (Test-Path $ProjectFile)) {
         throw "Project file not found: $ProjectFile"
@@ -38,8 +45,8 @@ try {
         throw "Icon source not found: $IconSource"
     }
 
-    Write-Host '==> Publishing HoloAvalonia'
-    & dotnet publish $ProjectFile -c Release
+    Write-Host "==> Publishing HoloAvalonia ($RuntimeIdentifier, self-contained)"
+    & dotnet publish $ProjectFile -c Release -r $RuntimeIdentifier --self-contained true
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE" }
 
     Write-Host '==> Rebuilding app bundle'
@@ -110,6 +117,13 @@ try {
 
     & chmod +x (Join-Path $MacOSDir $AppName)
     if ($LASTEXITCODE -ne 0) { throw "chmod failed with exit code $LASTEXITCODE" }
+
+    Write-Host '==> Signing app bundle'
+    & codesign --force --deep --sign - $AppBundle
+    if ($LASTEXITCODE -ne 0) { throw "codesign failed with exit code $LASTEXITCODE" }
+
+    & codesign --verify --deep --strict $AppBundle
+    if ($LASTEXITCODE -ne 0) { throw "codesign verification failed with exit code $LASTEXITCODE" }
 
     $FinalApp = Join-Path $PWD "$AppName.app"
 
