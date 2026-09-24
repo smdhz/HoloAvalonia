@@ -109,16 +109,31 @@
 
         <Expander Grid.Row="1" HorizontalAlignment="Stretch"
                   Margin="0,12,0,0"
-                  IsEnabled="{Binding IsReady}"
                   Header="{Binding StatusText}">
-            <StackPanel Margin="8,6" Orientation="Horizontal" Spacing="12">
-                <CheckBox Content="Show Past" IsChecked="{Binding ShowPastItems, Mode=TwoWay}" />
-                <CheckBox Content="Hide Shorts" IsChecked="{Binding HideShortVideos, Mode=TwoWay}" />
-                <Button Content="Filter"
-                        Click="FilterButton_Click" />
-                <Button x:Name="ThemeToggleButton"
-                        Content="Theme"
-                        Click="ThemeToggleButton_Click" />
+            <StackPanel Margin="8,6" Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <CheckBox Content="Show Past" IsChecked="{Binding ShowPastItems, Mode=TwoWay}" />
+                    <CheckBox Content="Hide Shorts" IsChecked="{Binding HideShortVideos, Mode=TwoWay}" />
+                    <Button Content="Filter"
+                            Click="FilterButton_Click" />
+                    <Button x:Name="ThemeToggleButton"
+                            Content="Theme"
+                            Click="ThemeToggleButton_Click" />
+                </StackPanel>
+                <ScrollViewer MaxHeight="240"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding RecentLogs}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Margin="0,0,0,6"
+                                           FontFamily="monospace"
+                                           Text="{Binding}"
+                                           TextWrapping="Wrap" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
             </StackPanel>
         </Expander>
     </Grid>

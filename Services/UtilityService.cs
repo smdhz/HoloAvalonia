@@ -34,10 +34,14 @@ public class UtilityService : INotifyPropertyChanged
             return;
         }
 
-        var line = $"{DateTime.Now:HH:mm:ss} {message}";
+        var timestamp = $"{DateTime.Now:HH:mm:ss} ";
+        var line = $"{timestamp}{message}";
+        var firstLineEnd = message.IndexOfAny(['\r', '\n']);
+        var statusMessage = firstLineEnd >= 0 ? message[..firstLineEnd] : message;
+        var statusLine = $"{timestamp}{statusMessage}";
         Dispatcher.UIThread.Post(() =>
         {
-            LastStatusLine = line;
+            LastStatusLine = statusLine;
             RecentLogs.Add(line);
 
             while (RecentLogs.Count > MaxLogLines)

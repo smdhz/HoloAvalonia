@@ -83,7 +83,8 @@ public class ApiTokenService
                     _logger.LogInformation("Login succeeded.");
                     return _state.Token;
                 }
-                catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+                catch (HttpRequestException ex) when (
+                    ex.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
                 {
                     _logger.LogWarning("Password incorrect, please try again.");
                 }

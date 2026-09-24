@@ -88,6 +88,11 @@ public class TailLogProvider : ILoggerProvider
                 message = exception.Message;
             }
 
+            if (exception is not null)
+            {
+                message = $"{message}{Environment.NewLine}{exception}";
+            }
+
             _uiStatusService.PublishLog($"[{logLevel}] {message}");
         }
     }

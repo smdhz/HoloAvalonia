@@ -6,6 +6,7 @@ using HoloAvalonia.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using NLog.Extensions.Logging;
 using System;
 
 namespace HoloAvalonia;
@@ -28,6 +29,7 @@ internal class Program
             {
                 logging.ClearProviders();
                 logging.AddSimpleConsole();
+                logging.AddNLog();
                 logging.Services.AddSingleton<ILoggerProvider, TailLogProvider>();
             })
             .ConfigureServices(services =>

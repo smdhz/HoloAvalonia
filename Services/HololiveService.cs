@@ -74,6 +74,8 @@ public class HololiveService : INotifyPropertyChanged, IDisposable
 
     public ObservableCollection<HololiveScheduleModel> Items { get; } = [];
 
+    public ObservableCollection<string> RecentLogs => _uiStatusService.RecentLogs;
+
     public string StatusText
     {
         get => _statusText;
@@ -243,7 +245,8 @@ public class HololiveService : INotifyPropertyChanged, IDisposable
 
             _logger.LogInformation("Hololive schedule refreshed. Items: {ItemCount}", Items.Count);
         }
-        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        catch (HttpRequestException ex) when (
+            ex.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
         {
             await ReloadAfterUnauthorizedAsync(ex);
         }
