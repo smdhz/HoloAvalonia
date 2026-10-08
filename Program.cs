@@ -1,6 +1,6 @@
 using Avalonia;
 using AsyncImageLoader;
-using AsyncImageLoader.Loaders;
+using AsyncImageLoader.Core.Pipeline;
 using HoloAvalonia.Services;
 using HoloAvalonia.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,7 +34,6 @@ internal class Program
             })
             .ConfigureServices(services =>
             {
-                services.AddSingleton<BaseWebImageLoader>();
                 services.AddSingleton<UtilityService>();
                 services.AddSingleton<ApiTokenService>();
                 services.AddSingleton<HololiveService>();
@@ -44,7 +43,7 @@ internal class Program
             })
             .Build();
 
-        var imageLoader = Host.Services.GetRequiredService<BaseWebImageLoader>();
+        using var imageLoader = ImageLoaderPipelineBuilder.Uncached().Build();
         ImageLoader.AsyncImageLoader = imageLoader;
         ImageBrushLoader.AsyncImageLoader = imageLoader;
 
