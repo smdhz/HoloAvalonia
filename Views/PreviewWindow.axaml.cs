@@ -91,11 +91,7 @@ public partial class PreviewWindow : Window
             return;
 
         _isAdjustingSize = true;
-        if (widthChanged && !heightChanged)
-        {
-            Height = Math.Max(MinHeight, e.NewSize.Width / _aspectRatio);
-        }
-        else if (heightChanged && !widthChanged)
+        if (heightChanged && !widthChanged)
         {
             Width = Math.Max(MinWidth, e.NewSize.Height * _aspectRatio);
         }

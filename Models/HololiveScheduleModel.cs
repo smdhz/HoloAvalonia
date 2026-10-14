@@ -11,6 +11,8 @@ using Avalonia.Input.Platform;
 using HoloAvalonia;
 using HoloAvalonia.Services;
 using HoloAvalonia.Views;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace HoloAvalonia.Models;
 
@@ -75,10 +77,9 @@ public class HololiveScheduleModel
     private async void PostToCalendar()
     {
         var services = Program.Host.Services;
-        var notifier = services.GetService(typeof(UtilityService)) as UtilityService;
-        var configuration = services.GetService(typeof(Microsoft.Extensions.Configuration.IConfiguration))
-            as Microsoft.Extensions.Configuration.IConfiguration;
-        var tokenService = services.GetService(typeof(ApiTokenService)) as ApiTokenService;
+        var notifier = services.GetService<UtilityService>();
+        var configuration = services.GetService<IConfiguration>();
+        var tokenService = services.GetService<ApiTokenService>();
         var serviceRootUri = new Uri(configuration!["Odata:ServiceRoot"]!, UriKind.Absolute);
         var token = await tokenService!.GetTokenAsync(serviceRootUri);
         if (string.IsNullOrWhiteSpace(token))
@@ -106,7 +107,7 @@ public class HololiveScheduleModel
     private async void CopyIdToClipboard()
     {
         var services = Program.Host.Services;
-        var notifier = services.GetService(typeof(UtilityService)) as UtilityService;
+        var notifier = services.GetService<UtilityService>();
         var desktop = (IClassicDesktopStyleApplicationLifetime)Application.Current!.ApplicationLifetime!;
         await desktop.MainWindow!.Clipboard!.SetTextAsync(Id.ToString("D"));
         notifier?.PublishNotification("ID copied to clipboard.", "Copy ID", NotificationType.Success, TimeSpan.FromSeconds(3));
@@ -118,7 +119,7 @@ public class HololiveScheduleModel
     private void PreviewImage()
     {
         var services = Program.Host.Services;
-        var notifier = services.GetService(typeof(UtilityService)) as UtilityService;
+        var notifier = services.GetService<UtilityService>();
         new PreviewWindow(StreamImage, notifier).Show();
     }
 }

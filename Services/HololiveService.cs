@@ -10,7 +10,6 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.WebSockets;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -21,7 +20,7 @@ using HoloAvalonia.Models;
 
 namespace HoloAvalonia.Services;
 
-public class HololiveService : INotifyPropertyChanged, IDisposable
+public class HololiveService : ObservableBase, IDisposable
 {
     private static readonly HttpClient ScheduleHttpClient = new();
 
@@ -111,8 +110,6 @@ public class HololiveService : INotifyPropertyChanged, IDisposable
         get => _isReady;
         private set => SetProperty(ref _isReady, value);
     }
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 
     /// <summary>
     /// Returns merged known member names from local cache, current items, and hidden-member settings.
@@ -661,26 +658,6 @@ public class HololiveService : INotifyPropertyChanged, IDisposable
             _logger.LogWarning(ex, "Failed to load member icons from embedded resource.");
             return [];
         }
-    }
-
-    /// <summary>
-    /// Sets a backing field and raises <see cref="PropertyChanged"/> when the value changes.
-    /// </summary>
-    /// <typeparam name="T">The property value type.</typeparam>
-    /// <param name="field">The backing field reference.</param>
-    /// <param name="value">The new value.</param>
-    /// <param name="propertyName">The property name inferred by caller.</param>
-    /// <returns><see langword="true"/> when updated; otherwise, <see langword="false"/>.</returns>
-    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-        {
-            return false;
-        }
-
-        field = value;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        return true;
     }
 
 }

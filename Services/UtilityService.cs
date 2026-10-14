@@ -2,17 +2,14 @@ using Avalonia.Threading;
 using Avalonia.Controls.Notifications;
 using System;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 
 namespace HoloAvalonia.Services;
 
-public class UtilityService : INotifyPropertyChanged
+public class UtilityService : ObservableBase
 {
     private const int MaxLogLines = 20;
     private string _lastStatusLine = "Ready.";
 
-    public event PropertyChangedEventHandler? PropertyChanged;
     public Action<UtilityNotificationEventArgs>? NotificationSender { get; set; }
 
     public string LastStatusLine
@@ -91,25 +88,5 @@ public class UtilityService : INotifyPropertyChanged
         public TimeSpan Expiration { get; } = expiration;
 
         public Action? OnClick { get; } = onClick;
-    }
-
-    /// <summary>
-    /// Sets a backing field and raises <see cref="PropertyChanged"/> when the value changes.
-    /// </summary>
-    /// <typeparam name="T">The property value type.</typeparam>
-    /// <param name="field">The backing field reference.</param>
-    /// <param name="value">The new value to assign.</param>
-    /// <param name="propertyName">The property name inferred by caller.</param>
-    /// <returns><see langword="true"/> when the value changed; otherwise, <see langword="false"/>.</returns>
-    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (Equals(field, value))
-        {
-            return false;
-        }
-
-        field = value;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        return true;
     }
 }

@@ -9,8 +9,6 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -23,7 +21,6 @@ public class ApiTokenService
     private readonly ILogger<ApiTokenService> _logger;
     private readonly SemaphoreSlim _sync = new(1, 1);
     private readonly string _tokenFilePath;
-    private readonly string _tokenKeyFilePath;
     private TokenState? _state;
 
     /// <summary>
@@ -37,7 +34,6 @@ public class ApiTokenService
         var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         var appDirectory = Path.Combine(appDataPath, "HoloAvalonia");
         _tokenFilePath = Path.Combine(appDirectory, "api-token.json");
-        _tokenKeyFilePath = Path.Combine(appDirectory, "api-token.key");
     }
 
     /// <summary>
@@ -148,8 +144,7 @@ public class ApiTokenService
 
         try
         {
-            var protectedBytes = await File.ReadAllBytesAsync(_tokenFilePath);
-            var json = await DecryptAsync(protectedBytes);
+            var json = await File.ReadAllTextAsync(_tokenFilePath);
             var state = JsonSerializer.Deserialize<TokenState>(json);
             if (state is null || string.IsNullOrWhiteSpace(state.Token))
             {
@@ -195,8 +190,7 @@ public class ApiTokenService
         Directory.CreateDirectory(directory);
 
         var json = JsonSerializer.Serialize(state);
-        var protectedBytes = await EncryptAsync(json);
-        await File.WriteAllBytesAsync(_tokenFilePath, protectedBytes);
+        await File.WriteAllTextAsync(_tokenFilePath, json);
     }
 
     /// <summary>
@@ -217,100 +211,6 @@ public class ApiTokenService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to delete token cache file {TokenFilePath}", _tokenFilePath);
-        }
-    }
-
-    /// <summary>
-    /// Encrypts plaintext payload using locally stored symmetric key.
-    /// </summary>
-    /// <param name="plainText">Plaintext content.</param>
-    /// <returns>Encrypted payload with version header, nonce, tag, and ciphertext.</returns>
-    private async Task<byte[]> EncryptAsync(string plainText)
-    {
-        var plainBytes = Encoding.UTF8.GetBytes(plainText);
-        var key = await GetOrCreateLocalKeyAsync();
-        var nonce = RandomNumberGenerator.GetBytes(12);
-        var cipher = new byte[plainBytes.Length];
-        var tag = new byte[16];
-
-        using var aes = new AesGcm(key, tagSizeInBytes: 16);
-        aes.Encrypt(nonce, plainBytes, cipher, tag);
-
-        var output = new byte[1 + nonce.Length + tag.Length + cipher.Length];
-        output[0] = 1;
-        Buffer.BlockCopy(nonce, 0, output, 1, nonce.Length);
-        Buffer.BlockCopy(tag, 0, output, 1 + nonce.Length, tag.Length);
-        Buffer.BlockCopy(cipher, 0, output, 1 + nonce.Length + tag.Length, cipher.Length);
-        return output;
-    }
-
-    /// <summary>
-    /// Decrypts persisted token payload.
-    /// </summary>
-    /// <param name="protectedBytes">Encrypted payload bytes.</param>
-    /// <returns>Decrypted JSON payload.</returns>
-    private async Task<string> DecryptAsync(byte[] protectedBytes)
-    {
-        if (protectedBytes.Length < 1 + 12 + 16 || protectedBytes[0] != 1)
-        {
-            throw new InvalidOperationException("Token cache payload is invalid.");
-        }
-
-        var key = await GetOrCreateLocalKeyAsync();
-        var nonce = new byte[12];
-        var tag = new byte[16];
-        var cipher = new byte[protectedBytes.Length - 1 - nonce.Length - tag.Length];
-        Buffer.BlockCopy(protectedBytes, 1, nonce, 0, nonce.Length);
-        Buffer.BlockCopy(protectedBytes, 1 + nonce.Length, tag, 0, tag.Length);
-        Buffer.BlockCopy(protectedBytes, 1 + nonce.Length + tag.Length, cipher, 0, cipher.Length);
-
-        var decryptedBytes = new byte[cipher.Length];
-        using var aes = new AesGcm(key, tagSizeInBytes: 16);
-        aes.Decrypt(nonce, cipher, tag, decryptedBytes);
-        return Encoding.UTF8.GetString(decryptedBytes);
-    }
-
-    /// <summary>
-    /// Gets the local encryption key or creates one if missing.
-    /// </summary>
-    /// <returns>A 32-byte symmetric encryption key.</returns>
-    private async Task<byte[]> GetOrCreateLocalKeyAsync()
-    {
-        var keyDirectory = Path.GetDirectoryName(_tokenKeyFilePath)
-            ?? throw new InvalidOperationException("Unable to resolve token key directory.");
-        Directory.CreateDirectory(keyDirectory);
-
-        if (File.Exists(_tokenKeyFilePath))
-        {
-            var existing = await File.ReadAllBytesAsync(_tokenKeyFilePath);
-            if (existing.Length == 32)
-            {
-                return existing;
-            }
-        }
-
-        var key = RandomNumberGenerator.GetBytes(32);
-        await File.WriteAllBytesAsync(_tokenKeyFilePath, key);
-        TryHardenFilePermissions(_tokenKeyFilePath);
-        return key;
-    }
-
-    /// <summary>
-    /// Attempts to restrict key file permissions on Unix systems.
-    /// </summary>
-    /// <param name="path">Key file path.</param>
-    private static void TryHardenFilePermissions(string path)
-    {
-        try
-        {
-            if (!OperatingSystem.IsWindows())
-            {
-                File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
-            }
-        }
-        catch
-        {
-            // Ignore permission hardening failures. App can still function.
         }
     }
 
