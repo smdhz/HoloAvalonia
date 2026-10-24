@@ -15,8 +15,13 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Notifications;
+using Avalonia.Input.Platform;
 using Avalonia.Threading;
 using HoloAvalonia.Models;
+using HoloAvalonia.Views;
 
 namespace HoloAvalonia.Services;
 
@@ -26,6 +31,8 @@ public class HololiveService : ObservableBase, IDisposable
 
     private readonly string _odataServiceRoot;
     private readonly string _odataEntitySet;
+    private readonly Uri _serviceRootUri;
+    private readonly string _apiBaseUrl;
     private readonly ILogger<HololiveService> _logger;
     private readonly UtilityService _uiStatusService;
     private readonly ApiTokenService _apiTokenService;
@@ -34,7 +41,11 @@ public class HololiveService : ObservableBase, IDisposable
     private readonly HashSet<string> _knownMembers = [];
     private readonly string _settingsFilePath;
     private readonly CancellationTokenSource _pushCts = new();
-    private bool _isLoading;
+    private readonly SemaphoreSlim _loadSync = new(1, 1);
+    private int _reloadRequested;
+    private int _authNotificationPending;
+    private TaskCompletionSource _pushReconnectSignal = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private TaskCompletionSource _pushLoginSignal = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private string _statusText = "Ready.";
     private bool _showPastItems;
     private bool _hideShortVideos = true;
@@ -55,6 +66,8 @@ public class HololiveService : ObservableBase, IDisposable
     {
         _odataServiceRoot = configuration["Odata:ServiceRoot"]!;
         _odataEntitySet = configuration["Odata:EntitySet"]!;
+        _serviceRootUri = new Uri(_odataServiceRoot, UriKind.Absolute);
+        _apiBaseUrl = $"{_serviceRootUri.Scheme}://{_serviceRootUri.Authority}";
         _logger = logger;
         _uiStatusService = uiStatusService;
         _apiTokenService = apiTokenService;
@@ -188,34 +201,57 @@ public class HololiveService : ObservableBase, IDisposable
     }
 
     /// <summary>
-    /// Loads schedule items from OData endpoint and updates UI-bound collection.
+    /// Requests a schedule reload. Requests made while a load is running are coalesced
+    /// into one follow-up load instead of being dropped.
     /// </summary>
     public async Task LoadAsync()
     {
-        if (_isLoading)
-        {
-            return;
-        }
+        Interlocked.Exchange(ref _reloadRequested, 1);
 
-        _isLoading = true;
+        // Re-check after release so a request arriving just before release is not lost.
+        while (Volatile.Read(ref _reloadRequested) == 1 && await _loadSync.WaitAsync(0))
+        {
+            try
+            {
+                while (Interlocked.Exchange(ref _reloadRequested, 0) == 1)
+                {
+                    await LoadOnceAsync();
+                }
+            }
+            finally
+            {
+                _loadSync.Release();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Loads schedule items from OData endpoint and updates UI-bound collection.
+    /// </summary>
+    private async Task LoadOnceAsync()
+    {
         try
         {
-            var serviceRootUri = new Uri(_odataServiceRoot);
-            var thumbnailBaseUrl = $"{serviceRootUri.Scheme}://{serviceRootUri.Authority}/hololive-thumbnail/";
+            var thumbnailBaseUrl = $"{_apiBaseUrl}/hololive-thumbnail/";
 
             var now = DateTimeOffset.Now;
             var queryStart = ShowPastItems
                 ? new DateTimeOffset(now.Date, now.Offset)
                 : now.AddHours(-1);
-            var token = await _apiTokenService.GetTokenAsync(serviceRootUri);
+            var token = await _apiTokenService.GetTokenAsync(_serviceRootUri);
             if (string.IsNullOrWhiteSpace(token))
             {
                 IsReady = false;
                 _logger.LogWarning("Skipping refresh because no API token is available.");
+                PublishLoginRequiredNotification(
+                    "Login required. Click notification to login.",
+                    "Login Required");
                 return;
             }
 
             IsReady = true;
+            // Wakes the push loop if it was waiting for a login.
+            SetSignal(ref _pushLoginSignal);
             var items = await QueryScheduleAsync(_odataServiceRoot, _odataEntitySet, queryStart, token);
             var hasNewKnownMember = MergeMembersIntoSet(_knownMembers, items.Select(x => x.MemberName));
 
@@ -231,6 +267,9 @@ public class HololiveService : ObservableBase, IDisposable
                     item.StreamImage = $"{thumbnailBaseUrl}{item.Id:D}";
                     item.MemberIcon = GetMemberIcon(item.MemberName);
                     item.DisplayMemberName = item.MemberName?.Trim() ?? string.Empty;
+                    item.AddToCalendarCommand = new RelayCommand(() => _ = AddToCalendarAsync(item));
+                    item.CopyIdCommand = new RelayCommand(() => _ = CopyIdAsync(item));
+                    item.PreviewImageCommand = new RelayCommand(() => PreviewImage(item));
                     Items.Add(item);
                 }
             });
@@ -251,10 +290,82 @@ public class HololiveService : ObservableBase, IDisposable
         {
             _logger.LogError(ex, "Failed to refresh Hololive schedule.");
         }
-        finally
+    }
+
+    /// <summary>
+    /// Requests calendar event creation for a schedule item.
+    /// </summary>
+    /// <param name="item">Schedule item to add.</param>
+    private async Task AddToCalendarAsync(HololiveScheduleModel item)
+    {
+        try
         {
-            _isLoading = false;
+            var token = await _apiTokenService.GetTokenAsync(_serviceRootUri);
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return;
+            }
+
+            var uri = new Uri($"{_apiBaseUrl}/api/hololive-schedule/{item.Id:D}/calendar");
+            using var request = new HttpRequestMessage(HttpMethod.Post, uri)
+            {
+                Headers =
+                {
+                    Authorization = new AuthenticationHeaderValue("Bearer", token)
+                }
+            };
+            using var response = await ScheduleHttpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            _uiStatusService.PublishNotification(
+                "Added to calendar.",
+                "Add to Calendar",
+                NotificationType.Success,
+                TimeSpan.FromSeconds(3));
         }
+        catch (HttpRequestException ex) when (
+            ex.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+        {
+            await ReloadAfterUnauthorizedAsync(ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to add schedule {ScheduleId} to calendar.", item.Id);
+            _uiStatusService.PublishNotification(
+                $"Failed to add to calendar: {ex.Message}",
+                "Add to Calendar",
+                NotificationType.Error,
+                TimeSpan.FromSeconds(4));
+        }
+    }
+
+    /// <summary>
+    /// Copies the schedule identifier to the OS clipboard.
+    /// </summary>
+    /// <param name="item">Schedule item whose identifier is copied.</param>
+    private async Task CopyIdAsync(HololiveScheduleModel item)
+    {
+        try
+        {
+            var desktop = Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
+            var clipboard = desktop?.MainWindow?.Clipboard
+                ?? throw new InvalidOperationException("Clipboard is not available.");
+            await clipboard.SetTextAsync(item.Id.ToString("D"));
+            _uiStatusService.PublishNotification("ID copied to clipboard.", "Copy ID", NotificationType.Success, TimeSpan.FromSeconds(3));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to copy schedule {ScheduleId} to clipboard.", item.Id);
+            _uiStatusService.PublishNotification($"Failed to copy ID: {ex.Message}", "Copy ID", NotificationType.Error, TimeSpan.FromSeconds(4));
+        }
+    }
+
+    /// <summary>
+    /// Opens the dedicated thumbnail preview window.
+    /// </summary>
+    /// <param name="item">Schedule item whose thumbnail is previewed.</param>
+    private void PreviewImage(HololiveScheduleModel item)
+    {
+        new PreviewWindow(item.StreamImage, _uiStatusService).Show();
     }
 
     /// <summary>
@@ -266,12 +377,30 @@ public class HololiveService : ObservableBase, IDisposable
         _logger.LogWarning(ex, "API token rejected. Invalidating token.");
         IsReady = false;
         await _apiTokenService.InvalidateTokenAsync();
-        _uiStatusService.PublishNotification(
+        PublishLoginRequiredNotification(
             "Authentication expired. Click notification to login again.",
-            "Authentication Error",
-            Avalonia.Controls.Notifications.NotificationType.Error,
+            "Authentication Error");
+    }
+
+    /// <summary>
+    /// Publishes a clickable login notification, at most one until the user acts on it.
+    /// </summary>
+    /// <param name="message">Notification message.</param>
+    /// <param name="title">Notification title.</param>
+    private void PublishLoginRequiredNotification(string message, string title)
+    {
+        if (Interlocked.Exchange(ref _authNotificationPending, 1) == 1)
+        {
+            return;
+        }
+
+        _uiStatusService.PublishNotification(
+            message,
+            title,
+            NotificationType.Error,
             TimeSpan.Zero,
-            () => _ = RetryLoginAndReloadAsync());
+            () => _ = RetryLoginAndReloadAsync(),
+            () => Interlocked.Exchange(ref _authNotificationPending, 0));
     }
 
     /// <summary>
@@ -279,14 +408,17 @@ public class HololiveService : ObservableBase, IDisposable
     /// </summary>
     private async Task RetryLoginAndReloadAsync()
     {
+        Interlocked.Exchange(ref _authNotificationPending, 0);
         try
         {
-            var serviceRootUri = new Uri(_odataServiceRoot);
-            var token = await _apiTokenService.GetTokenAsync(serviceRootUri, forceRenew: true);
+            var token = await _apiTokenService.GetTokenAsync(_serviceRootUri, forceRenew: true);
             if (string.IsNullOrWhiteSpace(token))
             {
                 IsReady = false;
                 _logger.LogWarning("User canceled login after token rejection.");
+                PublishLoginRequiredNotification(
+                    "Login required. Click notification to login.",
+                    "Login Required");
                 return;
             }
 
@@ -452,38 +584,58 @@ public class HololiveService : ObservableBase, IDisposable
     }
 
     /// <summary>
-    /// Runs the websocket push listener with automatic reconnect behavior.
+    /// Runs the websocket push listener. After a disconnect it waits until the user clicks
+    /// the reconnect notification; without a token it waits until a login succeeds.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token for loop shutdown.</param>
     private async Task RunPushLoopAsync(CancellationToken cancellationToken)
     {
+        var wsUri = new UriBuilder(_serviceRootUri)
+        {
+            Scheme = _serviceRootUri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase) ? "wss" : "ws",
+            Path = "/ws/hololive",
+            Query = string.Empty
+        }.Uri;
+
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                var serviceRootUri = new Uri(_odataServiceRoot);
-                var wsUriBuilder = new UriBuilder(serviceRootUri)
-                {
-                    Scheme = serviceRootUri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase) ? "wss" : "ws",
-                    Path = "/ws/hololive",
-                    Query = string.Empty
-                };
+                // Reset before checking the token so a login that completes in between is not missed.
+                var loginSignal = ResetSignal(ref _pushLoginSignal);
 
-                var token = await _apiTokenService.GetTokenAsync(serviceRootUri, cancellationToken: cancellationToken);
+                // Never prompt from the background loop; interactive login is driven by LoadAsync and notifications.
+                var token = await _apiTokenService.GetTokenAsync(
+                    _serviceRootUri,
+                    allowPrompt: false,
+                    cancellationToken: cancellationToken);
                 if (string.IsNullOrWhiteSpace(token))
                 {
                     IsReady = false;
-                    await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                    await loginSignal.WaitAsync(cancellationToken);
                     continue;
                 }
 
                 IsReady = true;
                 using var socket = new ClientWebSocket();
                 socket.Options.SetRequestHeader("Authorization", $"Bearer {token}");
-                await socket.ConnectAsync(wsUriBuilder.Uri, cancellationToken);
+                socket.Options.CollectHttpResponseDetails = true;
+                try
+                {
+                    await socket.ConnectAsync(wsUri, cancellationToken);
+                }
+                catch (WebSocketException ex) when (
+                    socket.HttpStatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+                {
+                    // The login notification covers this; next iteration waits for login.
+                    await ReloadAfterUnauthorizedAsync(ex);
+                    continue;
+                }
+
                 _logger.LogInformation("Connected to Hololive push endpoint.");
 
                 await ReceivePushMessagesAsync(socket, cancellationToken);
+                _logger.LogWarning("Hololive push websocket closed by server.");
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -491,16 +643,23 @@ public class HololiveService : ObservableBase, IDisposable
             }
             catch (WebSocketException ex)
             {
-                _logger.LogWarning(ex, "Hololive push websocket disconnected. Reconnecting soon.");
+                _logger.LogWarning(ex, "Hololive push websocket disconnected.");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error in Hololive push loop.");
             }
 
+            var reconnectSignal = ResetSignal(ref _pushReconnectSignal);
+            _uiStatusService.PublishNotification(
+                "Push connection lost. Click notification to reconnect.",
+                "Push Disconnected",
+                NotificationType.Warning,
+                TimeSpan.Zero,
+                () => SetSignal(ref _pushReconnectSignal));
             try
             {
-                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                await reconnectSignal.WaitAsync(cancellationToken);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -508,6 +667,24 @@ public class HololiveService : ObservableBase, IDisposable
             }
         }
     }
+
+    /// <summary>
+    /// Replaces a signal with a fresh one and returns the task that completes on the next <see cref="SetSignal"/>.
+    /// </summary>
+    /// <param name="field">Signal field to reset.</param>
+    /// <returns>Task completed by the next <see cref="SetSignal"/> call.</returns>
+    private static Task ResetSignal(ref TaskCompletionSource field)
+    {
+        var signal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Volatile.Write(ref field, signal);
+        return signal.Task;
+    }
+
+    /// <summary>
+    /// Completes the current signal, waking the push loop if it is waiting on it.
+    /// </summary>
+    /// <param name="field">Signal field to complete.</param>
+    private static void SetSignal(ref TaskCompletionSource field) => Volatile.Read(ref field).TrySetResult();
 
     /// <summary>
     /// Receives websocket push messages and triggers notifications plus reload.

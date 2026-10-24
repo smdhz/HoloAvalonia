@@ -1,28 +1,11 @@
 using System;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Text.Json.Serialization;
 using System.Windows.Input;
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Controls.Notifications;
-using Avalonia.Input.Platform;
-using HoloAvalonia;
-using HoloAvalonia.Services;
-using HoloAvalonia.Views;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace HoloAvalonia.Models;
 
 public class HololiveScheduleModel
 {
-    private static readonly HttpClient HttpClient = new();
-    private ICommand? _addToCalendarCommand;
-    private ICommand? _copyIdCommand;
-    private ICommand? _previewImageCommand;
-
     [JsonPropertyName(nameof(Id))]
     public Guid Id { get; set; }
 
@@ -45,13 +28,13 @@ public class HololiveScheduleModel
     public string DisplayMemberName { get; set; } = string.Empty;
 
     [JsonIgnore]
-    public ICommand AddToCalendarCommand => _addToCalendarCommand ??= new RelayCommand(PostToCalendar);
+    public ICommand? AddToCalendarCommand { get; set; }
 
     [JsonIgnore]
-    public ICommand CopyIdCommand => _copyIdCommand ??= new RelayCommand(CopyIdToClipboard);
+    public ICommand? CopyIdCommand { get; set; }
 
     [JsonIgnore]
-    public ICommand PreviewImageCommand => _previewImageCommand ??= new RelayCommand(PreviewImage);
+    public ICommand? PreviewImageCommand { get; set; }
 
     [JsonPropertyName(nameof(StreamUrl))]
     public string StreamUrl { get; set; } = string.Empty;
@@ -70,56 +53,4 @@ public class HololiveScheduleModel
 
     [JsonPropertyName(nameof(CreatedAt))]
     public DateTimeOffset CreatedAt { get; set; }
-
-    /// <summary>
-    /// Requests calendar creation through the Forge API.
-    /// </summary>
-    private async void PostToCalendar()
-    {
-        var services = Program.Host.Services;
-        var notifier = services.GetService<UtilityService>();
-        var configuration = services.GetService<IConfiguration>();
-        var tokenService = services.GetService<ApiTokenService>();
-        var serviceRootUri = new Uri(configuration!["Odata:ServiceRoot"]!, UriKind.Absolute);
-        var token = await tokenService!.GetTokenAsync(serviceRootUri);
-        if (string.IsNullOrWhiteSpace(token))
-        {
-            return;
-        }
-
-        var uri = new Uri(
-            $"{serviceRootUri.Scheme}://{serviceRootUri.Authority}/api/hololive-schedule/{Id:D}/calendar");
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
-        {
-            Headers =
-            {
-                Authorization = new AuthenticationHeaderValue("Bearer", token)
-            }
-        };
-        using var response = await HttpClient.SendAsync(request);
-        response.EnsureSuccessStatusCode();
-        notifier?.PublishNotification("Added to calendar.", "Add to Calendar", NotificationType.Success, TimeSpan.FromSeconds(3));
-    }
-
-    /// <summary>
-    /// Copies the schedule identifier to the OS clipboard.
-    /// </summary>
-    private async void CopyIdToClipboard()
-    {
-        var services = Program.Host.Services;
-        var notifier = services.GetService<UtilityService>();
-        var desktop = (IClassicDesktopStyleApplicationLifetime)Application.Current!.ApplicationLifetime!;
-        await desktop.MainWindow!.Clipboard!.SetTextAsync(Id.ToString("D"));
-        notifier?.PublishNotification("ID copied to clipboard.", "Copy ID", NotificationType.Success, TimeSpan.FromSeconds(3));
-    }
-
-    /// <summary>
-    /// Opens the dedicated thumbnail preview window.
-    /// </summary>
-    private void PreviewImage()
-    {
-        var services = Program.Host.Services;
-        var notifier = services.GetService<UtilityService>();
-        new PreviewWindow(StreamImage, notifier).Show();
-    }
 }

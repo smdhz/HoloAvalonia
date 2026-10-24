@@ -101,7 +101,8 @@ public partial class MainWindow : Window
                 e.Message,
                 e.Type,
                 e.Expiration,
-                e.OnClick)));
+                e.OnClick,
+                e.OnClose)));
     }
 
     /// <summary>

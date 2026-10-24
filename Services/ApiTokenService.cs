@@ -41,9 +41,14 @@ public class ApiTokenService
     /// </summary>
     /// <param name="serviceRootUri">Base service URI used to resolve token endpoint.</param>
     /// <param name="forceRenew">When <see langword="true"/>, forces a fresh login and token refresh.</param>
+    /// <param name="allowPrompt">When <see langword="false"/>, returns <see langword="null"/> instead of prompting for password.</param>
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
-    /// <returns>A valid bearer token, or <see langword="null"/> if login is canceled.</returns>
-    public async Task<string?> GetTokenAsync(Uri serviceRootUri, bool forceRenew = false, CancellationToken cancellationToken = default)
+    /// <returns>A valid bearer token, or <see langword="null"/> if login is canceled or not allowed.</returns>
+    public async Task<string?> GetTokenAsync(
+        Uri serviceRootUri,
+        bool forceRenew = false,
+        bool allowPrompt = true,
+        CancellationToken cancellationToken = default)
     {
         await _sync.WaitAsync(cancellationToken);
         try
@@ -53,6 +58,11 @@ public class ApiTokenService
             if (!forceRenew && HasValidToken(_state))
             {
                 return _state!.Token;
+            }
+
+            if (!allowPrompt)
+            {
+                return null;
             }
 
             _state = null;

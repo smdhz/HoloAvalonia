@@ -56,12 +56,14 @@ public class UtilityService : ObservableBase
     /// <param name="type">The notification severity type.</param>
     /// <param name="expiration">Optional auto-dismiss duration.</param>
     /// <param name="onClick">Optional callback invoked when notification is clicked.</param>
+    /// <param name="onClose">Optional callback invoked when notification is closed.</param>
     public void PublishNotification(
         string message,
         string title = "Info",
         NotificationType type = NotificationType.Information,
         TimeSpan? expiration = null,
-        Action? onClick = null)
+        Action? onClick = null,
+        Action? onClose = null)
     {
         if (string.IsNullOrWhiteSpace(message))
         {
@@ -69,7 +71,7 @@ public class UtilityService : ObservableBase
         }
 
         Dispatcher.UIThread.Post(() =>
-            NotificationSender?.Invoke(new UtilityNotificationEventArgs(message, title, type, expiration ?? TimeSpan.Zero, onClick)));
+            NotificationSender?.Invoke(new UtilityNotificationEventArgs(message, title, type, expiration ?? TimeSpan.Zero, onClick, onClose)));
     }
 
     public sealed class UtilityNotificationEventArgs(
@@ -77,7 +79,8 @@ public class UtilityService : ObservableBase
         string title,
         NotificationType type,
         TimeSpan expiration,
-        Action? onClick) : EventArgs
+        Action? onClick,
+        Action? onClose) : EventArgs
     {
         public string Message { get; } = message;
 
@@ -88,5 +91,7 @@ public class UtilityService : ObservableBase
         public TimeSpan Expiration { get; } = expiration;
 
         public Action? OnClick { get; } = onClick;
+
+        public Action? OnClose { get; } = onClose;
     }
 }
