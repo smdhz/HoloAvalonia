@@ -16,12 +16,12 @@ using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Notifications;
 using Avalonia.Input.Platform;
 using Avalonia.Threading;
 using HoloAvalonia.Models;
-using HoloAvalonia.Views;
 
 namespace HoloAvalonia.Services;
 
@@ -85,6 +85,11 @@ public class HololiveService : ObservableBase, IDisposable
     }
 
     public ObservableCollection<HololiveScheduleModel> Items { get; } = [];
+
+    /// <summary>
+    /// Gets or sets the platform callback that shows a thumbnail preview for an image URL.
+    /// </summary>
+    public Action<string>? ImagePreviewer { get; set; }
 
     public ObservableCollection<string> RecentLogs => _uiStatusService.RecentLogs;
 
@@ -226,6 +231,15 @@ public class HololiveService : ObservableBase, IDisposable
     }
 
     /// <summary>
+    /// Reloads the schedule and wakes a disconnected push loop, e.g. when the app returns to the foreground.
+    /// </summary>
+    public Task ResumeAsync()
+    {
+        SetSignal(ref _pushReconnectSignal);
+        return LoadAsync();
+    }
+
+    /// <summary>
     /// Loads schedule items from OData endpoint and updates UI-bound collection.
     /// </summary>
     private async Task LoadOnceAsync()
@@ -346,8 +360,13 @@ public class HololiveService : ObservableBase, IDisposable
     {
         try
         {
-            var desktop = Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
-            var clipboard = desktop?.MainWindow?.Clipboard
+            var topLevel = Application.Current?.ApplicationLifetime switch
+            {
+                IClassicDesktopStyleApplicationLifetime desktop => desktop.MainWindow,
+                ISingleViewApplicationLifetime singleView => TopLevel.GetTopLevel(singleView.MainView),
+                _ => null
+            };
+            var clipboard = topLevel?.Clipboard
                 ?? throw new InvalidOperationException("Clipboard is not available.");
             await clipboard.SetTextAsync(item.Id.ToString("D"));
             _uiStatusService.PublishNotification("ID copied to clipboard.", "Copy ID", NotificationType.Success, TimeSpan.FromSeconds(3));
@@ -360,12 +379,12 @@ public class HololiveService : ObservableBase, IDisposable
     }
 
     /// <summary>
-    /// Opens the dedicated thumbnail preview window.
+    /// Opens the platform thumbnail preview.
     /// </summary>
     /// <param name="item">Schedule item whose thumbnail is previewed.</param>
     private void PreviewImage(HololiveScheduleModel item)
     {
-        new PreviewWindow(item.StreamImage, _uiStatusService).Show();
+        ImagePreviewer?.Invoke(item.StreamImage);
     }
 
     /// <summary>

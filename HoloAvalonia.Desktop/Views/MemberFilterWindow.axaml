@@ -3,7 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:views="clr-namespace:HoloAvalonia.Views"
-        xmlns:model="clr-namespace:HoloAvalonia.Models"
+        xmlns:model="clr-namespace:HoloAvalonia.Models;assembly=HoloAvalonia.Core"
         x:Class="HoloAvalonia.Views.MemberFilterWindow"
         x:DataType="views:MemberFilterWindow"
         mc:Ignorable="d"

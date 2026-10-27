@@ -1,8 +1,4 @@
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
-using HoloAvalonia.Views;
 using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
@@ -37,6 +33,12 @@ public class ApiTokenService
     }
 
     /// <summary>
+    /// Gets or sets the platform callback that supplies a password; its argument is
+    /// <see langword="true"/> when the previous password was rejected.
+    /// </summary>
+    public Func<bool, Task<string?>>? PasswordPrompt { get; set; }
+
+    /// <summary>
     /// Gets a valid API token, prompting for password when required.
     /// </summary>
     /// <param name="serviceRootUri">Base service URI used to resolve token endpoint.</param>
@@ -68,9 +70,10 @@ public class ApiTokenService
             _state = null;
             await DeleteTokenFileAsync();
 
+            var isRetry = false;
             while (true)
             {
-                var password = await PromptPasswordAsync();
+                var password = await PromptPasswordAsync(isRetry);
                 if (string.IsNullOrWhiteSpace(password))
                 {
                     _logger.LogInformation("Login canceled.");
@@ -93,6 +96,7 @@ public class ApiTokenService
                     ex.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
                 {
                     _logger.LogWarning("Password incorrect, please try again.");
+                    isRetry = true;
                 }
             }
         }
@@ -251,28 +255,19 @@ public class ApiTokenService
     }
 
     /// <summary>
-    /// Displays password prompt dialog and returns entered value.
+    /// Asks the platform for a password on the UI thread.
     /// </summary>
-    /// <returns>The entered password, or <see langword="null"/> when canceled.</returns>
-    private static async Task<string?> PromptPasswordAsync()
+    /// <param name="isRetry"><see langword="true"/> when the previous password was rejected.</param>
+    /// <returns>The entered password, or <see langword="null"/> when canceled or no prompt is set.</returns>
+    private async Task<string?> PromptPasswordAsync(bool isRetry)
     {
-        return await Dispatcher.UIThread.InvokeAsync(async () =>
+        var prompt = PasswordPrompt;
+        if (prompt is null)
         {
-            var lifetime = Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
-            var owner = lifetime?.Windows.Count > 0
-                ? lifetime.Windows[0]
-                : null;
+            return null;
+        }
 
-            var dialog = new PasswordPromptWindow();
-
-            if (owner is Window ownerWindow)
-            {
-                return await dialog.ShowDialog<string?>(ownerWindow);
-            }
-
-            dialog.Show();
-            return await dialog.WaitForCloseAsync();
-        });
+        return await Dispatcher.UIThread.InvokeAsync(() => prompt(isRetry));
     }
 
     private sealed class TokenLoginRequest(string password)

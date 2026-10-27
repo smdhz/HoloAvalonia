@@ -1,8 +1,8 @@
 $ErrorActionPreference = 'Stop'
 
 $AppName = 'HoloAvalonia'
-$ProjectDir = $PSScriptRoot
-$ProjectFile = Join-Path $ProjectDir 'HoloAvalonia.csproj'
+$ProjectDir = Join-Path $PSScriptRoot 'HoloAvalonia.Desktop'
+$ProjectFile = Join-Path $ProjectDir 'HoloAvalonia.Desktop.csproj'
 $Architecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
 $RuntimeIdentifier = switch ($Architecture) {
     'Arm64' { 'osx-arm64' }

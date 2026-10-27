@@ -36,15 +36,14 @@ HoloAvalonia 从配置的 Forge/OData 服务读取直播日程，以本地时区
 ```bash
 git clone <your-repository-url>
 cd HoloAvalonia
-dotnet restore
-dotnet run
+dotnet run --project HoloAvalonia.Desktop
 ```
 
 首次启动时，应用会要求输入 API 密码。认证成功后，令牌会缓存在当前用户的应用数据目录中。
 
 ## 配置
 
-运行参数位于 [`appsettings.json`](appsettings.json)：
+桌面版运行参数位于 [`HoloAvalonia.Desktop/appsettings.json`](HoloAvalonia.Desktop/appsettings.json)：
 
 ```json
 {
@@ -87,30 +86,41 @@ dotnet run
 构建 Debug 版本：
 
 ```bash
-dotnet build
+dotnet build HoloAvalonia.Desktop
 ```
 
 发布 Release 版本：
 
 ```bash
-dotnet publish -c Release
+dotnet publish HoloAvalonia.Desktop -c Release
 ```
 
 也可以指定目标平台，例如：
 
 ```bash
-dotnet publish -c Release -r win-x64 --self-contained true
-dotnet publish -c Release -r linux-x64 --self-contained true
-dotnet publish -c Release -r osx-arm64 --self-contained true
+dotnet publish HoloAvalonia.Desktop -c Release -r win-x64 --self-contained true
+dotnet publish HoloAvalonia.Desktop -c Release -r linux-x64 --self-contained true
+dotnet publish HoloAvalonia.Desktop -c Release -r osx-arm64 --self-contained true
 ```
+
+## iOS
+
+`HoloAvalonia.iOS` 是精简的手机版：两列卡片、下拉刷新，没有控制面板和右键菜单，启动时用内置的 guest 密码自动登录。
+
+发布到手机：
+
+```bash
+dotnet publish HoloAvalonia.iOS -c Release -r ios-arm64 -p:BuildIpa=true -p:EnableCodeSigning=false
+```
+
+然后在 AltServer 菜单按住 Option → **Sideload .ipa…**，选 `HoloAvalonia.iOS/bin/Release/net10.0-ios/ios-arm64/publish/HoloAvalonia.iOS.ipa`。
 
 ## 项目结构
 
 ```text
-Models/       日程数据和界面命令
-Services/     OData、认证、推送、日志与本地设置
-Views/        Avalonia 窗口和界面
-Resources/    应用图标与成员图标映射
+HoloAvalonia.Core/      共享类库：日程数据、OData、认证、推送、日志、本地设置、配色
+HoloAvalonia.Desktop/   Windows / macOS / Linux 桌面版（窗口、对话框、应用图标）
+HoloAvalonia.iOS/       iOS 版界面
 ```
 
 ## 技术栈

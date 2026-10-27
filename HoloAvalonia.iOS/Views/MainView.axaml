@@ -1,0 +1,84 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:service="clr-namespace:HoloAvalonia.Services;assembly=HoloAvalonia.Core"
+             xmlns:model="clr-namespace:HoloAvalonia.Models;assembly=HoloAvalonia.Core"
+             xmlns:asyncImageLoader="clr-namespace:AsyncImageLoader;assembly=AsyncImageLoader.Avalonia"
+             x:Class="HoloAvalonia.Views.MainView"
+             x:DataType="service:HololiveService"
+             Background="{DynamicResource HoloAppBackgroundBrush}">
+    <UserControl.Styles>
+        <Style Selector="Border.InfoOverlay">
+            <Setter Property="Background" Value="{DynamicResource HoloSurfaceBrush}" />
+        </Style>
+        <Style Selector="Border.InfoOverlay.WithinHour">
+            <Setter Property="Background" Value="{DynamicResource HoloSoonOverlayBrush}" />
+        </Style>
+        <Style Selector="Border.StreamCard">
+            <Setter Property="Background" Value="{DynamicResource HoloSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource HoloBorderBrush}" />
+        </Style>
+    </UserControl.Styles>
+    <RefreshContainer x:Name="Refresher"
+                      RefreshRequested="Refresher_RefreshRequested">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding Items}"
+                          Margin="6">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Columns="2" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="model:HololiveScheduleModel">
+                        <Border Classes="StreamCard"
+                                Margin="6"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                ClipToBounds="True">
+                            <DockPanel>
+                                <HyperlinkButton DockPanel.Dock="Top"
+                                                 NavigateUri="{Binding StreamUrl}"
+                                                 Background="Transparent"
+                                                 BorderThickness="0"
+                                                 Padding="0"
+                                                 HorizontalAlignment="Stretch"
+                                                 HorizontalContentAlignment="Stretch">
+                                    <Viewbox Stretch="Uniform">
+                                        <Grid Width="320" Height="180"
+                                              Background="{DynamicResource HoloSurfaceLowBrush}">
+                                            <Image asyncImageLoader:ImageLoader.Source="{Binding StreamImage}"
+                                                   Stretch="UniformToFill" />
+                                        </Grid>
+                                    </Viewbox>
+                                </HyperlinkButton>
+                                <Border Classes.InfoOverlay="True"
+                                        Classes.WithinHour="{Binding IsStartWithinOneHour}"
+                                        Padding="8,6">
+                                    <StackPanel Spacing="2">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <TextBlock Foreground="{DynamicResource HoloAccentBrush}"
+                                                       FontSize="13"
+                                                       Text="{Binding MemberIcon}" />
+                                            <TextBlock Text="{Binding DisplayMemberName}"
+                                                       FontSize="13"
+                                                       FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding StreamTitle}"
+                                                   FontSize="12"
+                                                   MaxLines="2"
+                                                   TextWrapping="Wrap"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding LocalStartDt, StringFormat='{}{0:MM-dd HH:mm}'}"
+                                                   FontSize="12"
+                                                   Opacity="0.7" />
+                                    </StackPanel>
+                                </Border>
+                            </DockPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </RefreshContainer>
+</UserControl>
