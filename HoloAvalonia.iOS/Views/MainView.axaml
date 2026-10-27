@@ -18,67 +18,140 @@
             <Setter Property="BorderBrush" Value="{DynamicResource HoloBorderBrush}" />
         </Style>
     </UserControl.Styles>
-    <RefreshContainer x:Name="Refresher"
-                      RefreshRequested="Refresher_RefreshRequested">
-        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl ItemsSource="{Binding Items}"
-                          Margin="6">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <UniformGrid Columns="2" />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="model:HololiveScheduleModel">
-                        <Border Classes="StreamCard"
-                                Margin="6"
-                                BorderThickness="1"
-                                CornerRadius="10"
-                                ClipToBounds="True">
-                            <DockPanel>
-                                <HyperlinkButton DockPanel.Dock="Top"
-                                                 NavigateUri="{Binding StreamUrl}"
-                                                 Background="Transparent"
-                                                 BorderThickness="0"
-                                                 Padding="0"
-                                                 HorizontalAlignment="Stretch"
-                                                 HorizontalContentAlignment="Stretch">
-                                    <Viewbox Stretch="Uniform">
-                                        <Grid Width="320" Height="180"
-                                              Background="{DynamicResource HoloSurfaceLowBrush}">
-                                            <Image asyncImageLoader:ImageLoader.Source="{Binding StreamImage}"
-                                                   Stretch="UniformToFill" />
-                                        </Grid>
-                                    </Viewbox>
-                                </HyperlinkButton>
-                                <Border Classes.InfoOverlay="True"
-                                        Classes.WithinHour="{Binding IsStartWithinOneHour}"
-                                        Padding="8,6">
-                                    <StackPanel Spacing="2">
-                                        <StackPanel Orientation="Horizontal" Spacing="4">
-                                            <TextBlock Foreground="{DynamicResource HoloAccentBrush}"
-                                                       FontSize="13"
-                                                       Text="{Binding MemberIcon}" />
-                                            <TextBlock Text="{Binding DisplayMemberName}"
-                                                       FontSize="13"
-                                                       FontWeight="SemiBold"
+    <Grid>
+        <RefreshContainer x:Name="Refresher"
+                          RefreshRequested="Refresher_RefreshRequested">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding Items}"
+                              Margin="6">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="2" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="model:HololiveScheduleModel">
+                            <Border Classes="StreamCard"
+                                    Margin="6"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    ClipToBounds="True">
+                                <DockPanel>
+                                    <HyperlinkButton DockPanel.Dock="Top"
+                                                     NavigateUri="{Binding StreamUrl}"
+                                                     Background="Transparent"
+                                                     BorderThickness="0"
+                                                     Padding="0"
+                                                     HorizontalAlignment="Stretch"
+                                                     HorizontalContentAlignment="Stretch">
+                                        <Viewbox Stretch="Uniform">
+                                            <Grid Width="320" Height="180"
+                                                  Background="{DynamicResource HoloSurfaceLowBrush}">
+                                                <Image asyncImageLoader:ImageLoader.Source="{Binding StreamImage}"
+                                                       Stretch="UniformToFill" />
+                                            </Grid>
+                                        </Viewbox>
+                                    </HyperlinkButton>
+                                    <Border Classes.InfoOverlay="True"
+                                            Classes.WithinHour="{Binding IsStartWithinOneHour}"
+                                            Padding="8,6">
+                                        <StackPanel Spacing="2">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock Foreground="{DynamicResource HoloAccentBrush}"
+                                                           FontSize="13"
+                                                           Text="{Binding MemberIcon}" />
+                                                <TextBlock Text="{Binding DisplayMemberName}"
+                                                           FontSize="13"
+                                                           FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding StreamTitle}"
+                                                       FontSize="12"
+                                                       MaxLines="2"
+                                                       TextWrapping="Wrap"
                                                        TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding LocalStartDt, StringFormat='{}{0:MM-dd HH:mm}'}"
+                                                       FontSize="12"
+                                                       Opacity="0.7" />
                                         </StackPanel>
-                                        <TextBlock Text="{Binding StreamTitle}"
-                                                   FontSize="12"
-                                                   MaxLines="2"
-                                                   TextWrapping="Wrap"
-                                                   TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{Binding LocalStartDt, StringFormat='{}{0:MM-dd HH:mm}'}"
-                                                   FontSize="12"
-                                                   Opacity="0.7" />
-                                    </StackPanel>
-                                </Border>
-                            </DockPanel>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
-    </RefreshContainer>
+                                    </Border>
+                                </DockPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </RefreshContainer>
+
+        <Button x:Name="FilterButton"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Margin="0,0,20,12"
+                Width="56" Height="56"
+                CornerRadius="28"
+                Padding="0"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center"
+                Background="{DynamicResource HoloAccentBrush}"
+                Click="FilterButton_Click">
+            <PathIcon Width="22" Height="22"
+                      Foreground="White"
+                      Data="M3,4 L21,4 L14,12.5 L14,19 L10,21 L10,12.5 Z" />
+        </Button>
+
+        <Border x:Name="FilterOverlay"
+                IsVisible="False"
+                Background="#66000000">
+            <Border Margin="16,24"
+                    Padding="12"
+                    CornerRadius="14"
+                    Background="{DynamicResource HoloAppBackgroundBrush}">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top" Spacing="4">
+                        <TextBlock FontSize="18" FontWeight="Bold" Text="Filter Members" />
+                        <TextBlock FontSize="12" Opacity="0.8" Text="Unchecked members will be hidden." />
+                    </StackPanel>
+
+                    <StackPanel DockPanel.Dock="Bottom"
+                                Margin="0,12,0,0"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Right"
+                                Spacing="8">
+                        <Button Content="Cancel" Click="FilterCancelButton_Click" />
+                        <Button Content="Save" Click="FilterSaveButton_Click" />
+                    </StackPanel>
+
+                    <Border Margin="0,12,0,0"
+                            Padding="8"
+                            CornerRadius="8"
+                            BorderThickness="1"
+                            BorderBrush="{DynamicResource HoloBorderBrush}"
+                            Background="{DynamicResource HoloSurfaceLowBrush}">
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl x:Name="FilterList">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Columns="2" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="model:MemberVisibilityOption">
+                                        <CheckBox Margin="0,2"
+                                                  IsChecked="{Binding IsVisible}">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock Foreground="{DynamicResource HoloAccentBrush}"
+                                                           Text="{Binding MemberIcon}" />
+                                                <TextBlock Text="{Binding DisplayName}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </CheckBox>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                </DockPanel>
+            </Border>
+        </Border>
+    </Grid>
 </UserControl>

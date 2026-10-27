@@ -2,14 +2,19 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Platform;
+using Avalonia.Interactivity;
+using HoloAvalonia.Models;
 using HoloAvalonia.Services;
 using System;
+using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace HoloAvalonia.Views;
 
 public partial class MainView : UserControl
 {
     private readonly HololiveService? _hololiveService;
+    private readonly ObservableCollection<MemberVisibilityOption> _filterOptions = [];
     private IInsetsManager? _insetsManager;
 
     /// <summary>
@@ -18,6 +23,7 @@ public partial class MainView : UserControl
     public MainView()
     {
         InitializeComponent();
+        FilterList.ItemsSource = _filterOptions;
     }
 
     /// <summary>
@@ -91,5 +97,72 @@ public partial class MainView : UserControl
         {
             deferral.Complete();
         }
+    }
+
+    /// <summary>
+    /// Opens the member filter panel with current visibility state.
+    /// </summary>
+    /// <param name="sender">The event sender.</param>
+    /// <param name="e">Button click event arguments.</param>
+    private void FilterButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_hololiveService is null)
+            return;
+
+        var hiddenMembers = _hololiveService.GetHiddenMembers();
+
+        _filterOptions.Clear();
+        foreach (var member in _hololiveService.GetKnownMembers())
+        {
+            _filterOptions.Add(new MemberVisibilityOption
+            {
+                MemberName = member,
+                MemberIcon = _hololiveService.GetMemberIcon(member),
+                DisplayName = member,
+                IsVisible = !hiddenMembers.Contains(member)
+            });
+        }
+
+        SetFilterPanelVisible(true);
+    }
+
+    /// <summary>
+    /// Closes the member filter panel without applying changes.
+    /// </summary>
+    /// <param name="sender">The event sender.</param>
+    /// <param name="e">Button click event arguments.</param>
+    private void FilterCancelButton_Click(object? sender, RoutedEventArgs e)
+    {
+        SetFilterPanelVisible(false);
+    }
+
+    /// <summary>
+    /// Saves the selected member visibility state and closes the panel.
+    /// </summary>
+    /// <param name="sender">The event sender.</param>
+    /// <param name="e">Button click event arguments.</param>
+    private async void FilterSaveButton_Click(object? sender, RoutedEventArgs e)
+    {
+        SetFilterPanelVisible(false);
+
+        if (_hololiveService is null)
+            return;
+
+        var hiddenMembers = _filterOptions
+            .Where(x => !x.IsVisible)
+            .Select(x => x.MemberName)
+            .ToList();
+
+        await _hololiveService.SaveHiddenMembersAsync(hiddenMembers);
+    }
+
+    /// <summary>
+    /// Shows or hides the filter panel, hiding the floating button while it is open.
+    /// </summary>
+    /// <param name="visible">Whether the panel is shown.</param>
+    private void SetFilterPanelVisible(bool visible)
+    {
+        FilterOverlay.IsVisible = visible;
+        FilterButton.IsVisible = !visible;
     }
 }

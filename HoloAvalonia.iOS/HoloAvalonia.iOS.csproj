@@ -9,6 +9,7 @@
     <ApplicationTitle>HoloAvalonia</ApplicationTitle>
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
+    <AppIcon>AppIcon</AppIcon>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 
