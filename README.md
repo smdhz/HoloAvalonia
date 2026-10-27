@@ -107,6 +107,8 @@ dotnet publish HoloAvalonia.Desktop -c Release -r osx-arm64 --self-contained tru
 
 `HoloAvalonia.iOS` 是精简的手机版：两列卡片、下拉刷新，没有控制面板和右键菜单，启动时用内置的 guest 密码自动登录。
 
+iOS 会挂起后台 App 的网络连接，所以 iOS 版关闭了 WebSocket 推送（[`appsettings.json`](HoloAvalonia.iOS/appsettings.json) 中 `Push:Enabled` 为 `false`），改为在启动、切回前台和下拉时刷新日程。
+
 发布到手机：
 
 ```bash
@@ -122,6 +124,11 @@ HoloAvalonia.Core/      共享类库：日程数据、OData、认证、推送、
 HoloAvalonia.Desktop/   Windows / macOS / Linux 桌面版（窗口、对话框、应用图标）
 HoloAvalonia.iOS/       iOS 版界面
 ```
+
+## 改进方向
+
+- **把推送从 Core 拆到桌面版**：WebSocket 推送目前写在 Core 的 `HololiveService` 里，iOS 只是通过配置关掉，代码仍会编进 iOS 包。可以拆成只在桌面版注册的独立服务，同时去掉 `Push:Enabled` 开关。
+- **iOS 后台通知**：如果需要后台提醒，应由后端通过 APNs 推送，而不是在 App 里保持 WebSocket 连接。
 
 ## 技术栈
 

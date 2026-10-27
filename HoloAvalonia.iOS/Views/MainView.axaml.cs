@@ -8,6 +8,8 @@ using HoloAvalonia.Services;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Foundation;
+using UIKit;
 
 namespace HoloAvalonia.Views;
 
@@ -97,6 +99,20 @@ public partial class MainView : UserControl
         {
             deferral.Complete();
         }
+    }
+
+    /// <summary>
+    /// Opens the stream directly via UIKit; Avalonia's iOS launcher fails silently.
+    /// </summary>
+    /// <param name="sender">The clicked stream link.</param>
+    /// <param name="e">Button click event arguments.</param>
+    private void StreamLink_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control { DataContext: HololiveScheduleModel item }
+            || NSUrl.FromString(item.StreamUrl) is not { } url)
+            return;
+
+        UIApplication.SharedApplication.OpenUrl(url, new UIApplicationOpenUrlOptions(), null);
     }
 
     /// <summary>

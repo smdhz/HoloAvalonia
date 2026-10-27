@@ -81,7 +81,11 @@ public class HololiveService : ObservableBase, IDisposable
         _uiStatusService.PropertyChanged += UiStatusService_PropertyChanged;
         StatusText = _uiStatusService.LastStatusLine;
         _ = LoadAsync();
-        _ = RunPushLoopAsync(_pushCts.Token);
+        // iOS suspends background sockets, so it opts out and relies on resume/pull-to-refresh.
+        if (!string.Equals(configuration["Push:Enabled"], "false", StringComparison.OrdinalIgnoreCase))
+        {
+            _ = RunPushLoopAsync(_pushCts.Token);
+        }
     }
 
     public ObservableCollection<HololiveScheduleModel> Items { get; } = [];

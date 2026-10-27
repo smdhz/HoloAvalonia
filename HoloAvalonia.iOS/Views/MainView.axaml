@@ -17,6 +17,18 @@
             <Setter Property="Background" Value="{DynamicResource HoloSurfaceBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource HoloBorderBrush}" />
         </Style>
+        <Style Selector="Button.FilterFab">
+            <Setter Property="Background" Value="{DynamicResource HoloSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource HoloBorderBrush}" />
+        </Style>
+        <Style Selector="Button.FilterFab:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource HoloSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource HoloBorderBrush}" />
+        </Style>
+        <Style Selector="Button.FilterFab:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource HoloSurfaceLowBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource HoloBorderBrush}" />
+        </Style>
     </UserControl.Styles>
     <Grid>
         <RefreshContainer x:Name="Refresher"
@@ -38,7 +50,7 @@
                                     ClipToBounds="True">
                                 <DockPanel>
                                     <HyperlinkButton DockPanel.Dock="Top"
-                                                     NavigateUri="{Binding StreamUrl}"
+                                                     Click="StreamLink_Click"
                                                      Background="Transparent"
                                                      BorderThickness="0"
                                                      Padding="0"
@@ -92,10 +104,11 @@
                 Padding="0"
                 HorizontalContentAlignment="Center"
                 VerticalContentAlignment="Center"
-                Background="{DynamicResource HoloAccentBrush}"
+                Classes="FilterFab"
+                BorderThickness="1"
                 Click="FilterButton_Click">
             <PathIcon Width="22" Height="22"
-                      Foreground="White"
+                      Foreground="{DynamicResource HoloAccentBrush}"
                       Data="M3,4 L21,4 L14,12.5 L14,19 L10,21 L10,12.5 Z" />
         </Button>
 
